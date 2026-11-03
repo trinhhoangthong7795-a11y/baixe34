@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hệ Thống Quản Lý Bãi Xe 34</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS cho Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas cho xuất ảnh -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Chart.js vẽ biểu đồ chuẩn mẫu -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
+
+    <!-- Toast Notification -->
+    <div id="toastContainer" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none"></div>
+
+    <!-- Header Bar -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+            <button id="btnOpenMenu" class="p-2 -ml-2 rounded-lg hover:bg-slate-800 text-slate-200 focus:outline-none">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+            <h1 class="font-bold text-lg tracking-wide text-sky-400">BÃI XE 34</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="firebaseStatus" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Offline/Local
+            </span>
+        </div>
+    </header>
+
+    <!-- Menu 3 gạch ẩn -->
+    <div id="drawerOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0"></div>
+    <aside id="drawerMenu" class="fixed top-0 left-0 bottom-0 w-72 bg-slate-900 text-slate-200 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col shadow-2xl">
+        <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+            <div>
+                <h2 class="font-bold text-xl text-sky-400">BÃI XE 34</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Quản lý bãi chuyên nghiệp</p>
+            </div>
+            <button id="btnCloseMenu" class="p-2 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <button data-tab="overview" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-chart-pie text-sky-400 w-5"></i> 1. Tổng Quan
+            </button>
+            <button data-tab="records" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-rectangle-list text-emerald-400 w-5"></i> 2. Quản Lý Hồ Sơ
+            </button>
+            <button data-tab="grid" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-map text-amber-400 w-5"></i> 3. Sơ Đồ Bãi Đỗ
+            </button>
+            <button data-tab="settings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors text-slate-300 hover:bg-slate-800">
+                <i class="fa-solid fa-gear text-indigo-400 w-5"></i> 4. Cài Đặt
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 bg-slate-950">
+            Người vận hành: <span class="text-slate-300 font-medium">Trịnh Hoàng Thông</span>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-2 sm:p-5 max-w-7xl mx-auto w-full pb-28">
+
+        <!-- ================= MODULE 1: TỔNG QUAN (MÔ PHỎNG ANH 2288.PNG) ================= -->
+        <section id="mod-overview" class="tab-content space-y-4">
+            
+            <!-- Controls bar outside export area -->
+            <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-1.5">
+                    <button onclick="setOverviewFilter('day')" class="btn-filter-time active px-3 py-1.5 rounded-lg text-xs font-medium border bg-sky-600 text-white border-sky-600">Hôm nay</button>
+                    <button onclick="setOverviewFilter('week')" class="btn-filter-time px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200">Tuần</button>
+                    <button onclick="setOverviewFilter('month')" class="btn-filter-time px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200">Tháng</button>
+                    <button onclick="setOverviewFilter('year')" class="btn-filter-time px-3 py-1.5 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200">Năm</button>
+                </div>
+                <button onclick="exportReportImage()" class="bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-slate-800">
+                    <i class="fa-solid fa-camera"></i> Xuất Báo Cáo Ảnh
+                </button>
+            </div>
+
+            <!-- EXPORTABLE REPORT CANVAS AREA -->
+            <div id="reportExportArea" class="bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                
+                <!-- 1. Header Banner -->
+                <div class="bg-slate-950 text-white rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow">
+                    <div>
+                        <h2 class="text-xl font-extrabold tracking-wider text-white">BÁO CÁO TỔNG QUAN BÃI XE</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Kỳ báo cáo tổng hợp hệ thống VinFast Fleet</p>
+                    </div>
+                    <div class="mt-2 sm:mt-0">
+                        <span class="bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700">
+                            Người lập: <strong class="text-white">Trịnh Hoàng Thông</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 2. Top 4 KPI Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <!-- TỔNG XE TỒN BÃI -->
+                    <div onclick="applyQuickFilter('all_in')" class="bg-white border-2 border-slate-800 p-3.5 rounded-2xl text-center cursor-pointer hover:shadow-md transition-all">
+                        <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">TỔNG XE TỒN BÃI</p>
+                        <p id="kpiTotalIn" class="text-3xl font-extrabold text-slate-900 mt-1">0</p>
+                    </div>
+                    <!-- XE CỦ CÓ BIỂN -->
+                    <div onclick="applyQuickFilter('old_with_plate')" class="bg-white border-2 border-blue-500 p-3.5 rounded-2xl text-center cursor-pointer hover:shadow-md transition-all">
+                        <p class="text-[11px] font-bold text-blue-600 uppercase tracking-wide">XE CỦ CÓ BIỂN</p>
+                        <p id="kpiOldWithPlate" class="text-3xl font-extrabold text-blue-600 mt-1">0</p>
+                    </div>
+                    <!-- XE MỚI CHƯA BIỂN -->
+                    <div onclick="applyQuickFilter('new_no_plate')" class="bg-white border-2 border-emerald-500 p-3.5 rounded-2xl text-center cursor-pointer hover:shadow-md transition-all">
+                        <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-wide">XE MỚI CHƯA BIỂN</p>
+                        <p id="kpiNewNoPlate" class="text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+                    </div>
+                    <!-- XE CỦ TỒN TỪ 11 NGÀY -->
+                    <div onclick="applyQuickFilter('old_11_days')" class="bg-white border-2 border-red-500 p-3.5 rounded-2xl text-center cursor-pointer hover:shadow-md transition-all">
+                        <p class="text-[11px] font-bold text-red-600 uppercase tracking-wide">XE CỦ TỒN TỪ 11 NGÀY</p>
+                        <p id="kpiOldOver11" class="text-3xl font-extrabold text-red-600 mt-1">0</p>
+                    </div>
+                </div>
+
+                <!-- 3. Middle Grid: Line Chart + Indicators Table -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Line Chart -->
+                    <div class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">DIỄN BIẾN XE TỒN BÃI TRONG TUẦN</h3>
+                        <div class="h-48 relative">
+                            <canvas id="lineChartWeekly"></canvas>
+                        </div>
+                    </div>
+                    <!-- Indicators List -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col justify-between">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">CHỈ TIÊU TRONG KỲ</h3>
+                        <div class="space-y-2.5 text-xs">
+                            <div class="flex justify-between items-center py-1 border-b border-slate-100">
+                                <span class="text-slate-600">Lượt xe vào</span>
+                                <span id="statInCount" class="font-bold text-blue-600 text-sm">0</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-slate-100">
+                                <span class="text-slate-600">Lượt xe ra</span>
+                                <span id="statOutCount" class="font-bold text-blue-600 text-sm">0</span>
+                            </div>
+                            <div onclick="applyQuickFilter('status_cho_sua')" class="flex justify-between items-center py-1 border-b border-slate-100 cursor-pointer hover:bg-slate-50 rounded px-1">
+                                <span class="text-slate-600">Chờ sửa chữa</span>
+                                <span id="statChoSua" class="font-bold text-amber-500 text-sm">0</span>
+                            </div>
+                            <div onclick="applyQuickFilter('status_cho_giao')" class="flex justify-between items-center py-1 border-b border-slate-100 cursor-pointer hover:bg-slate-50 rounded px-1">
+                                <span class="text-slate-600">Chờ giao</span>
+                                <span id="statChoGiao" class="font-bold text-emerald-600 text-sm">0</span>
+                            </div>
+                            <div onclick="applyQuickFilter('no_in_date')" class="flex justify-between items-center py-1 cursor-pointer hover:bg-red-50 rounded px-1">
+                                <span class="text-slate-700 font-semibold">Không rõ ngày nhập</span>
+                                <span id="statNoInDate" class="font-bold text-red-600 text-sm">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Bar Chart: Phân bổ thời gian tồn bãi -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">PHÂN BỔ THỜI GIAN TỒN BÃI</h3>
+                    <div class="h-44 relative">
+                        <canvas id="barChartAge"></canvas>
+                    </div>
+                </div>
+
+                <!-- 5. Diễn biến đặc biệt -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide">DIỄN BIẾN ĐẶC BIỆT TRONG KỲ</h3>
+                        <button onclick="addSpecialNoteInput()" class="text-xs text-sky-600 font-medium hover:underline">+ Thêm dòng</button>
+                    </div>
+                    <div id="specialNotesInputsContainer" class="space-y-2">
+                        <!-- Dynamic Editable Inputs -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= MODULE 2: QUẢN LÝ HỒ SƠ ================= -->
+        <section id="mod-records" class="tab-content space-y-4 hidden">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
+                <div class="flex flex-col gap-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="recordSearchInput" placeholder="Tìm theo VIN, biển số, tên, bộ phận..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                        <select id="filterType" class="bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium">
+                            <option value="">Tất cả loại xe</option>
+                            <option value="new">Xe Mới</option>
+                            <option value="old">Xe Cũ</option>
+                        </select>
+                        <select id="filterStatus" class="bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="in">Đang tồn bãi</option>
+                            <option value="out">Đã xuất bãi</option>
+                        </select>
+                        <select id="filterModel" class="bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium">
+                            <option value="">Tất cả dòng xe</option>
+                        </select>
+                        <select id="filterAgeRange" class="bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-red-600">
+                            <option value="">Lọc Thời Gian Tồn</option>
+                            <option value="under11">< 11 ngày</option>
+                            <option value="11to20">11 - 20 ngày</option>
+                            <option value="21to30">21 - 30 ngày</option>
+                            <option value="over31">> 31 ngày</option>
+                            <option value="over11">Xe cũ tồn >= 11 ngày</option>
+                            <option value="nodate">⚠️ Không rõ ngày nhập</option>
+                        </select>
+                        <select id="filterDept" class="bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium">
+                            <option value="">Tất cả bộ phận</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-between items-center pt-1">
+                        <span id="recordCountText" class="text-xs text-slate-500 font-medium">Hiển thị: 0 hồ sơ</span>
+                        <button onclick="exportRecordsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> Xuất File Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar border border-slate-100 rounded-xl">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-950 text-slate-200 font-medium">
+                            <tr>
+                                <th class="p-3">Loại</th>
+                                <th class="p-3">Định danh (VIN/Biển số)</th>
+                                <th class="p-3">Dòng xe</th>
+                                <th class="p-3">Vị trí</th>
+                                <th class="p-3">Số ngày tồn</th>
+                                <th class="p-3">Ngày nhập</th>
+                                <th class="p-3">Người/Bộ phận vào</th>
+                                <th class="p-3">Tình trạng vào</th>
+                                <th class="p-3">Ngày xuất</th>
+                                <th class="p-3">Người/Bộ phận ra</th>
+                                <th class="p-3 text-right">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= MODULE 3: SƠ ĐỒ BÃI ĐỖ ================= -->
+        <section id="mod-grid" class="tab-content space-y-4 hidden">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3">
+                <div class="flex flex-col sm:flex-row gap-2 justify-between items-stretch sm:items-center">
+                    <div class="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 sm:pb-0" id="rowTabContainer"></div>
+                    <div class="flex gap-2">
+                        <div class="relative flex-1 sm:w-64">
+                            <input type="text" id="gridSearchInput" placeholder="Nhập VIN/Biển số tìm ô..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-sky-500">
+                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        </div>
+                        <select id="gridStatusFilter" class="bg-slate-50 border border-slate-200 rounded-lg text-xs px-2 py-1.5 font-medium">
+                            <option value="">Tất cả ô</option>
+                            <option value="empty">Ô trống</option>
+                            <option value="new">Xe mới</option>
+                            <option value="old">Xe cũ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 text-xs font-medium border-t border-b border-slate-100 py-2 px-1">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-100 border border-slate-300"></span> Ô trống (Mờ)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-500"></span> Xe Mới</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500"></span> Xe Cũ</span>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar pt-1">
+                    <div class="min-w-[640px]">
+                        <div class="grid grid-cols-4 gap-2 mb-2 text-center font-bold text-xs text-slate-600 bg-slate-50 py-2 rounded-lg border border-slate-200">
+                            <div>Cột T (Trái)</div>
+                            <div>Cột TLD (Trái Lối Đi)</div>
+                            <div>Cột PLD (Phải Lối Đi)</div>
+                            <div>Cột P (Phải)</div>
+                        </div>
+                        <div id="slotsGridContainer" class="grid grid-cols-4 gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= MODULE 4: CÀI ĐẶT ================= -->
+        <section id="mod-settings" class="tab-content space-y-4 hidden">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-6">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">1. Kết nối Firebase Console</h3>
+                    <p class="text-xs text-slate-500 mt-1 mb-3">Hệ thống đã kết nối sẵn cấu hình Firebase Project <code class="bg-slate-100 px-1 py-0.5 rounded text-sky-700">myparking34</code></p>
+                    <div class="bg-slate-900 text-slate-300 p-3 rounded-xl font-mono text-xs space-y-1 overflow-x-auto">
+                        <div><span class="text-sky-400">Project ID:</span> myparking34</div>
+                        <div><span class="text-sky-400">Auth Domain:</span> myparking34.firebaseapp.com</div>
+                        <div><span class="text-sky-400">Database Realtime Status:</span> <span id="fbSyncText" class="text-amber-400">Sẵn sàng đồng bộ</span></div>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="syncToFirebase()" class="bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Tải dữ liệu lên Firebase
+                        </button>
+                        <button onclick="fetchFromFirebase()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Tải dữ liệu từ Firebase
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-2">2. Nhập & Xuất Dữ liệu Excel / JSON</h3>
+                    <p class="text-xs text-slate-500 mt-1 mb-3">Nạp danh sách xe tồn bãi từ file Excel/JSON hoặc xuất dữ liệu dự phòng.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-file-excel"></i> Nhập File Excel (.xlsx / .xls)
+                            <input type="file" id="importExcelInput" accept=".xlsx, .xls" class="hidden" onchange="importExcel(event)">
+                        </label>
+                        <button onclick="exportJSON()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-code"></i> Xuất File .JSON
+                        </button>
+                        <label class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-file-import"></i> Nhập File .JSON
+                            <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importJSON(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-bold text-red-600 border-b border-slate-100 pb-2">3. Vùng Nguy Hiểm</h3>
+                    <p class="text-xs text-slate-500 mt-1 mb-3">Xóa toàn bộ dữ liệu trên thiết bị và đưa hệ thống về trạng thái ban đầu.</p>
+                    <button onclick="resetFactoryData()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i> Xóa dữ liệu về cài đặt gốc
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Nút FAB + -->
+    <div class="fixed bottom-6 right-6 z-30">
+        <button id="btnFab" onclick="toggleFabMenu()" class="w-14 h-14 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl transition-all duration-200 focus:outline-none">
+            <i class="fa-solid fa-plus transition-transform duration-200" id="fabIcon"></i>
+        </button>
+        <div id="fabMenu" class="absolute bottom-16 right-0 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 w-48 space-y-1 hidden transform origin-bottom-right transition-all">
+            <button onclick="openFormModal('in-old')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600 rounded-xl flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span> Nhập Xe Cũ
+            </button>
+            <button onclick="openFormModal('out-old')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-amber-50 hover:text-amber-600 rounded-xl flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span> Xuất Xe Cũ
+            </button>
+            <hr class="border-slate-100">
+            <button onclick="openFormModal('in-new')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Nhập Xe Mới
+            </button>
+            <button onclick="openFormModal('out-new')" class="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Xuất Xe Mới
+            </button>
+        </div>
+    </div>
+
+    <!-- GLOBAL MODAL CONTAINER -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+        <div id="modalContent" class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden transform transition-transform">
+            <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="modalTitle" class="font-bold text-slate-900 text-base">Tiêu đề Modal</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="modalBody" class="p-5 overflow-y-auto space-y-4 text-sm flex-1"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+	https://myparking34-default-rtdb.firebaseio.com/
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC2W9xaOjE9oBm5PYM0RUCPLSyK3588jU",
+            authDomain: "myparking34.firebaseapp.com",
+            projectId: "myparking34",
+            storageBucket: "myparking34.firebasestorage.app",
+            messagingSenderId: "455472996739",
+            appId: "1:455472996739:web:eb8ff4db93a93a019816b6",
+            measurementId: "G-FG060TYBCK"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getDatabase(app);
+            window.fbDb = db;
+            window.fbRef = ref;
+            window.fbSet = set;
+            window.fbGet = get;
+            document.getElementById('firebaseStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Firebase Ready';
+            document.getElementById('firebaseStatus').className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+            document.getElementById('fbSyncText').innerText = "Đã kết nối Firebase Console thành công";
+            document.getElementById('fbSyncText').className = "text-emerald-400";
+        } catch (e) {
+            console.warn("Firebase Init status:", e);
+        }
+    </script>
+
+    <!-- Main Logic Script -->
+    <script>
+        const PRESETS = {
+            departments: ["Điều phối", "Cố vấn", "Kỹ thuật", "Kho", "PKD", "Bộ phận khác"],
+            models: ["VF 5", "VF e34", "Limo Green", "Minio", "EC Van", "VF 2", "VF 6", "VF 7", "VF 8", "VF 9"],
+            inStatusOld: ["Chờ sửa", "Chờ giao", "Tình trạng khác"],
+            outStatusOld: ["Về xưởng", "Giao GSM", "Tình trạng khác"]
+        };
+
+        let state = {
+            vehicles: [],
+            rows: [1, 2, 3, 4, 5],
+            specialNotes: ["Giao nhận ca đêm lúc 22:00", "Xe VF8 cần cắm sạc khu vực trạm", ""],
+            selectedRow: 1,
+            overviewFilter: 'day'
+        };
+
+        let lineChartInstance = null;
+        let barChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLocalState();
+            initUI();
+            renderAll();
+        });
+
+        function getNowFormatted() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${mins}`;
+        }
+
+        function formatDateVN(dateStr) {
+            if (!dateStr) return 'Chưa rõ';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function calculateDaysInYard(inDateStr) {
+            if (!inDateStr) return null;
+            const inDate = new Date(inDateStr);
+            if (isNaN(inDate.getTime())) return null;
+            const diffTime = Math.abs(new Date() - inDate);
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function saveLocalState() {
+            localStorage.setItem('PARKING34_STATE', JSON.stringify(state));
+        }
+
+        function loadLocalState() {
+            const saved = localStorage.getItem('PARKING34_STATE');
+            if (saved) {
+                try { state = JSON.parse(saved); } catch(e){}
+            } else {
+                saveLocalState();
+            }
+        }
+
+        function initUI() {
+            const btnOpen = document.getElementById('btnOpenMenu');
+            const btnClose = document.getElementById('btnCloseMenu');
+            const drawer = document.getElementById('drawerMenu');
+            const overlay = document.getElementById('drawerOverlay');
+
+            btnOpen.addEventListener('click', () => {
+                drawer.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            });
+
+            function closeDrawer() {
+                drawer.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+
+            btnClose.addEventListener('click', closeDrawer);
+            overlay.addEventListener('click', closeDrawer);
+
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switchTab(btn.dataset.tab);
+                    closeDrawer();
+                });
+            });
+
+            const selModel = document.getElementById('filterModel');
+            PRESETS.models.forEach(m => selModel.innerHTML += `<option value="${m}">${m}</option>`);
+            const selDept = document.getElementById('filterDept');
+            PRESETS.departments.forEach(d => selDept.innerHTML += `<option value="${d}">${d}</option>`);
+
+            ['recordSearchInput', 'filterType', 'filterStatus', 'filterModel', 'filterAgeRange', 'filterDept'].forEach(id => {
+                document.getElementById(id).addEventListener('input', renderRecordsTable);
+            });
+
+            document.getElementById('gridSearchInput').addEventListener('input', renderGrid);
+            document.getElementById('gridStatusFilter').addEventListener('change', renderGrid);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`mod-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                if(btn.dataset.tab === tabId) {
+                    btn.classList.add('bg-slate-800', 'text-sky-400');
+                } else {
+                    btn.classList.remove('bg-slate-800', 'text-sky-400');
+                }
+            });
+
+            renderAll();
+        }
+
+        function toggleFabMenu() {
+            const fabMenu = document.getElementById('fabMenu');
+            const fabIcon = document.getElementById('fabIcon');
+            if (fabMenu.classList.contains('hidden')) {
+                fabMenu.classList.remove('hidden');
+                fabIcon.classList.add('rotate-45');
+            } else {
+                fabMenu.classList.add('hidden');
+                fabIcon.classList.remove('rotate-45');
+            }
+        }
+
+        function renderAll() {
+            renderOverview();
+            renderRecordsTable();
+            renderGridTabs();
+            renderGrid();
+        }
+
+        // ================= MODULE 1: TỔNG QUAN =================
+        function setOverviewFilter(filter) {
+            state.overviewFilter = filter;
+            document.querySelectorAll('.btn-filter-time').forEach(b => {
+                b.classList.remove('bg-sky-600', 'text-white', 'border-sky-600');
+                b.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            });
+            event.target.classList.add('bg-sky-600', 'text-white', 'border-sky-600');
+            renderOverview();
+        }
+
+        function renderOverview() {
+            const inVehicles = state.vehicles.filter(v => v.status === 'in');
+            const oldWithPlate = inVehicles.filter(v => v.type === 'old' && v.plate).length;
+            const newNoPlate = inVehicles.filter(v => v.type === 'new').length;
+            
+            // Xe cũ tồn >= 11 ngày
+            const oldOver11 = inVehicles.filter(v => {
+                if (v.type !== 'old') return false;
+                const days = calculateDaysInYard(v.inDate);
+                return days !== null && days >= 11;
+            }).length;
+
+            document.getElementById('kpiTotalIn').innerText = inVehicles.length;
+            document.getElementById('kpiOldWithPlate').innerText = oldWithPlate;
+            document.getElementById('kpiNewNoPlate').innerText = newNoPlate;
+            document.getElementById('kpiOldOver11').innerText = oldOver11;
+
+            // Stats
+            document.getElementById('statInCount').innerText = state.vehicles.length;
+            document.getElementById('statOutCount').innerText = state.vehicles.filter(v => v.status === 'out').length;
+            document.getElementById('statChoSua').innerText = inVehicles.filter(v => v.inStatus === 'Chờ sửa').length;
+            document.getElementById('statChoGiao').innerText = inVehicles.filter(v => v.inStatus === 'Chờ giao').length;
+            document.getElementById('statNoInDate').innerText = inVehicles.filter(v => !v.inDate).length;
+
+            // Render Notes Inputs
+            const notesContainer = document.getElementById('specialNotesInputsContainer');
+            notesContainer.innerHTML = '';
+            (state.specialNotes || []).forEach((noteText, idx) => {
+                notesContainer.innerHTML += `
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400">${idx + 1}.</span>
+                        <input type="text" value="${noteText}" onchange="updateSpecialNote(${idx}, this.value)" placeholder="Nhập diễn biến đặc biệt ${idx + 1}..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                `;
+            });
+
+            // Render Charts
+            renderCharts(inVehicles);
+        }
+
+        function updateSpecialNote(idx, val) {
+            if(!state.specialNotes) state.specialNotes = [];
+            state.specialNotes[idx] = val;
+            saveLocalState();
+        }
+
+        function addSpecialNoteInput() {
+            if(!state.specialNotes) state.specialNotes = [];
+            state.specialNotes.push("");
+            saveLocalState();
+            renderOverview();
+        }
+
+        function renderCharts(inVehicles) {
+            // 1. Line Chart Weekly
+            const ctxLine = document.getElementById('lineChartWeekly').getContext('2d');
+            if (lineChartInstance) lineChartInstance.destroy();
+
+            lineChartInstance = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'],
+                    datasets: [{
+                        label: 'Xe tồn bãi',
+                        data: [inVehicles.length - 4, inVehicles.length - 2, inVehicles.length - 1, inVehicles.length, inVehicles.length + 2, inVehicles.length + 1, inVehicles.length],
+                        borderColor: '#0284c7',
+                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#0284c7'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+
+            // 2. Bar Chart Age Distribution
+            let under11 = 0, d11to20 = 0, d21to30 = 0, over31 = 0, noDate = 0;
+            inVehicles.forEach(v => {
+                const days = calculateDaysInYard(v.inDate);
+                if (days === null) {
+                    noDate++;
+                } else if (days < 11) {
+                    under11++;
+                } else if (days <= 20) {
+                    d11to20++;
+                } else if (days <= 30) {
+                    d21to30++;
+                } else {
+                    over31++;
+                }
+            });
+
+            const ctxBar = document.getElementById('barChartAge').getContext('2d');
+            if (barChartInstance) barChartInstance.destroy();
+
+            barChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['<11 ngày', '11-20 ngày', '21-30 ngày', '>31 ngày', 'Không rõ ngày'],
+                    datasets: [{
+                        data: [under11, d11to20, d21to30, over31, noDate],
+                        backgroundColor: ['#3b82f6', '#f59e0b', '#f97316', '#ef4444', '#64748b'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    onClick: (evt, activeEls) => {
+                        if (activeEls.length > 0) {
+                            const idx = activeEls[0].index;
+                            const keys = ['under11', '11to20', '21to30', 'over31', 'nodate'];
+                            applyQuickFilter(keys[idx]);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Bấm vào KPI/Biểu đồ chuyển trực tiếp sang Module 2 và lọc đúng xe
+        function applyQuickFilter(key) {
+            switchTab('records');
+            const ageSel = document.getElementById('filterAgeRange');
+            const statusSel = document.getElementById('filterStatus');
+            const typeSel = document.getElementById('filterType');
+
+            // Reset filters
+            ageSel.value = "";
+            statusSel.value = "";
+            typeSel.value = "";
+
+            if (key === 'all_in') {
+                statusSel.value = "in";
+            } else if (key === 'old_with_plate') {
+                statusSel.value = "in";
+                typeSel.value = "old";
+            } else if (key === 'new_no_plate') {
+                statusSel.value = "in";
+                typeSel.value = "new";
+            } else if (key === 'old_11_days') {
+                statusSel.value = "in";
+                typeSel.value = "old";
+                ageSel.value = "over11";
+            } else if (key === 'status_cho_sua') {
+                statusSel.value = "in";
+                document.getElementById('recordSearchInput').value = "Chờ sửa";
+            } else if (key === 'status_cho_giao') {
+                statusSel.value = "in";
+                document.getElementById('recordSearchInput').value = "Chờ giao";
+            } else if (key === 'no_in_date' || key === 'nodate') {
+                statusSel.value = "in";
+                ageSel.value = "nodate";
+            } else if (['under11', '11to20', '21to30', 'over31'].includes(key)) {
+                statusSel.value = "in";
+                ageSel.value = key;
+            }
+
+            renderRecordsTable();
+            showToast('Đã áp dụng bộ lọc!', 'info');
+        }
+
+        function exportReportImage() {
+            const area = document.getElementById('reportExportArea');
+            showToast('Đang tạo ảnh báo cáo...', 'info');
+            html2canvas(area, { scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Bao_Cao_Bai_Xe_34_${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('Đã xuất file ảnh báo cáo!', 'success');
+            });
+        }
+
+        // ================= MODULE 2: QUẢN LÝ HỒ SƠ =================
+        function renderRecordsTable() {
+            const query = document.getElementById('recordSearchInput').value.toLowerCase();
+            const fType = document.getElementById('filterType').value;
+            const fStatus = document.getElementById('filterStatus').value;
+            const fModel = document.getElementById('filterModel').value;
+            const fAgeRange = document.getElementById('filterAgeRange').value;
+            const fDept = document.getElementById('filterDept').value;
+
+            const filtered = state.vehicles.filter(v => {
+                const matchQ = (v.vin || '').toLowerCase().includes(query) ||
+                               (v.plate || '').toLowerCase().includes(query) ||
+                               (v.inPerson || '').toLowerCase().includes(query) ||
+                               (v.outPerson || '').toLowerCase().includes(query) ||
+                               (v.inStatus || '').toLowerCase().includes(query) ||
+                               (v.notes || '').toLowerCase().includes(query);
+                const matchType = !fType || v.type === fType;
+                const matchStatus = !fStatus || v.status === fStatus;
+                const matchModel = !fModel || v.model === fModel;
+                const matchDept = !fDept || (v.dept === fDept);
+
+                // Age filter
+                let matchAge = true;
+                const days = calculateDaysInYard(v.inDate);
+                if (fAgeRange === 'under11') matchAge = days !== null && days < 11;
+                else if (fAgeRange === '11to20') matchAge = days !== null && days >= 11 && days <= 20;
+                else if (fAgeRange === '21to30') matchAge = days !== null && days >= 21 && days <= 30;
+                else if (fAgeRange === 'over31') matchAge = days !== null && days > 31;
+                else if (fAgeRange === 'over11') matchAge = v.type === 'old' && days !== null && days >= 11;
+                else if (fAgeRange === 'nodate') matchAge = !v.inDate;
+
+                return matchQ && matchType && matchStatus && matchModel && matchDept && matchAge;
+            });
+
+            document.getElementById('recordCountText').innerText = `Hiển thị: ${filtered.length} / ${state.vehicles.length} hồ sơ`;
+
+            const tbody = document.getElementById('recordsTableBody');
+            tbody.innerHTML = '';
+
+            filtered.forEach(v => {
+                const isNew = v.type === 'new';
+                const badgeType = isNew ? '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">Xe Mới</span>' : '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px]">Xe Cũ</span>';
+                const identifier = isNew ? `<span class="font-bold font-mono">${v.vin}</span> <span class="text-slate-400">(${v.color||'Chưa ghi'})</span>` : `<span class="font-bold font-mono">${v.plate}</span>`;
+
+                const daysInYard = calculateDaysInYard(v.inDate);
+                let daysBadge = '<span class="text-red-500 font-medium">⚠️ Chưa rõ</span>';
+                if (daysInYard !== null) {
+                    if (daysInYard >= 31) daysBadge = `<span class="px-2 py-0.5 rounded bg-red-100 text-red-700 font-bold">${daysInYard} ngày</span>`;
+                    else if (daysInYard >= 11) daysBadge = `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">${daysInYard} ngày</span>`;
+                    else daysBadge = `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">${daysInYard} ngày</span>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-3">${badgeType}</td>
+                        <td class="p-3">${identifier}</td>
+                        <td class="p-3 font-medium">${v.model || '-'}</td>
+                        <td class="p-3 font-mono font-bold text-sky-600">${v.slot || 'Chưa gán'}</td>
+                        <td class="p-3">${daysBadge}</td>
+                        <td class="p-3 text-slate-600">${formatDateVN(v.inDate)}</td>
+                        <td class="p-3">${v.inPerson || '-'} (${v.dept || '-'})</td>
+                        <td class="p-3 font-semibold text-slate-700">${v.inStatus || '-'}</td>
+                        <td class="p-3 text-slate-600">${formatDateVN(v.outDate)}</td>
+                        <td class="p-3">${v.outPerson || '-'}</td>
+                        <td class="p-3 text-right space-x-1">
+                            <button onclick="editRecord(${v.id})" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="confirmDeleteRecord(${v.id})" class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400">Không tìm thấy hồ sơ xe phù hợp.</td></tr>`;
+            }
+        }
+
+        function exportRecordsToExcel() {
+            const data = state.vehicles.map(v => ({
+                "Phân Loại": v.type === 'new' ? 'Xe Mới' : 'Xe Cũ',
+                "Định Danh (VIN/Biển số)": v.type === 'new' ? v.vin : v.plate,
+                "Dòng Xe": v.model,
+                "Màu Xe": v.color || '',
+                "Số Chìa Khóa": v.keyCount || '',
+                "Vị Trí Đỗ": v.slot || 'Chưa gán',
+                "Số Ngày Tồn": calculateDaysInYard(v.inDate) ?? 'Chưa rõ',
+                "Ngày Nhập": formatDateVN(v.inDate),
+                "Tên Người Vào": v.inPerson || '',
+                "Bộ Phận": v.dept || '',
+                "Tình Trạng Vào": v.inStatus || '',
+                "Ngày Xuất": formatDateVN(v.outDate),
+                "Tên Người Ra": v.outPerson || '',
+                "Tình Trạng Ra": v.outStatus || '',
+                "Trạng Thái Tồn": v.status === 'in' ? 'Đang tồn bãi' : 'Đã xuất bãi',
+                "Ghi Chú": v.notes || ''
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "HoSoBaiXe34");
+            XLSX.writeFile(wb, `Ho_So_Bai_Xe_34_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('Đã xuất file Excel!', 'success');
+        }
+
+        // ================= MODULE 3: SƠ ĐỒ BÃI ĐỖ =================
+        function renderGridTabs() {
+            const container = document.getElementById('rowTabContainer');
+            container.innerHTML = '';
+            state.rows.forEach(r => {
+                const isActive = state.selectedRow === r;
+                container.innerHTML += `
+                    <button onclick="selectGridRow(${r})" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${isActive ? 'bg-sky-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                        Dãy ${r}
+                    </button>
+                `;
+            });
+            container.innerHTML += `
+                <button onclick="addNewRow()" class="px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-semibold whitespace-nowrap">
+                    + Thêm Dãy
+                </button>
+            `;
+        }
+
+        function selectGridRow(r) {
+            state.selectedRow = r;
+            renderGridTabs();
+            renderGrid();
+        }
+
+        function addNewRow() {
+            const nextRow = state.rows.length + 1;
+            state.rows.push(nextRow);
+            saveLocalState();
+            selectGridRow(nextRow);
+            showToast(`Đã thêm Dãy ${nextRow}`, 'success');
+        }
+
+        function renderGrid() {
+            const r = state.selectedRow;
+            const container = document.getElementById('slotsGridContainer');
+            container.innerHTML = '';
+
+            const query = document.getElementById('gridSearchInput').value.toLowerCase().trim();
+            const filterStat = document.getElementById('gridStatusFilter').value;
+            const colPrefixes = ['T', 'TLD', 'PLD', 'P'];
+
+            for(let i = 1; i <= 20; i++) {
+                colPrefixes.forEach(prefix => {
+                    const slotName = `${r}${prefix}-${i}`;
+                    const vehicle = state.vehicles.find(v => v.slot === slotName && v.status === 'in');
+
+                    let matchQ = true;
+                    if(query) {
+                        matchQ = vehicle && (
+                            (vehicle.vin || '').toLowerCase().includes(query) ||
+                            (vehicle.plate || '').toLowerCase().includes(query)
+                        );
+                    }
+
+                    let matchF = true;
+                    if(filterStat === 'empty') matchF = !vehicle;
+                    if(filterStat === 'new') matchF = vehicle && vehicle.type === 'new';
+                    if(filterStat === 'old') matchF = vehicle && vehicle.type === 'old';
+
+                    const isHighlight = query && matchQ;
+
+                    if (!vehicle) {
+                        container.innerHTML += `
+                            <div onclick="clickSlot('${slotName}', null)" class="border border-dashed border-slate-300 rounded-xl p-2.5 flex flex-col justify-between h-16 cursor-pointer hover:border-sky-500 hover:bg-sky-50/50 transition-all ${!matchF ? 'opacity-30' : ''}">
+                                <span class="text-[11px] font-mono text-slate-400 opacity-60 font-medium">${slotName}</span>
+                                <span class="text-[10px] text-slate-300 italic">Trống</span>
+                            </div>
+                        `;
+                    } else {
+                        const isNew = vehicle.type === 'new';
+                        const bgClass = isNew ? 'bg-blue-500 text-white shadow-blue-200' : 'bg-amber-500 text-white shadow-amber-200';
+                        const displayTitle = isNew ? vehicle.vin : vehicle.plate;
+
+                        container.innerHTML += `
+                            <div onclick="clickSlot('${slotName}', ${vehicle.id})" class="${bgClass} rounded-xl p-2.5 flex flex-col justify-between h-16 cursor-pointer shadow-md hover:scale-[1.02] transition-all relative ${isHighlight ? 'ring-4 ring-sky-400 animate-bounce' : ''} ${!matchF ? 'opacity-30' : ''}">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-[10px] font-mono opacity-80">${slotName}</span>
+                                    <span class="text-[9px] bg-black/20 px-1.5 py-0.5 rounded font-semibold uppercase">${vehicle.model || 'Xe'}</span>
+                                </div>
+                                <div class="font-bold text-xs truncate font-mono tracking-wide">${displayTitle}</div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+        }
+
+        function clickSlot(slotName, vehicleId) {
+            if (!vehicleId) {
+                const unassigned = state.vehicles.filter(v => !v.slot && v.status === 'in');
+                let optionsHtml = unassigned.map(v => `
+                    <div onclick="assignSlot(${v.id}, '${slotName}')" class="p-2.5 bg-slate-50 hover:bg-sky-50 rounded-xl cursor-pointer flex justify-between items-center border border-slate-200">
+                        <div>
+                            <span class="font-bold font-mono text-xs text-slate-800">${v.type === 'new' ? v.vin : v.plate}</span>
+                            <span class="text-xs text-slate-500 block">${v.model} - ${v.type === 'new' ? 'Xe mới' : 'Xe cũ'}</span>
+                        </div>
+                        <span class="text-xs text-sky-600 font-semibold">Gán vào ô &rarr;</span>
+                    </div>
+                `).join('');
+
+                showModal(`Xử lý Ô Trống: ${slotName}`, `
+                    <div class="space-y-4">
+                        <div class="flex gap-2">
+                            <button onclick="closeModal(); openFormModal('in-new', '${slotName}')" class="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl">+ Nhập xe Mới vào ô</button>
+                            <button onclick="closeModal(); openFormModal('in-old', '${slotName}')" class="flex-1 py-2 bg-amber-600 text-white text-xs font-semibold rounded-xl">+ Nhập xe Cũ vào ô</button>
+                        </div>
+                        <hr class="border-slate-100">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-700 mb-2">Hoặc chọn xe chưa có vị trí:</h4>
+                            <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                ${optionsHtml || '<p class="text-xs text-slate-400 italic">Không có xe chờ gán vị trí.</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `);
+            } else {
+                const v = state.vehicles.find(item => item.id === vehicleId);
+                if (!v) return;
+
+                showModal(`Ô vị trí: ${slotName}`, `
+                    <div class="space-y-4">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+                            <div class="flex justify-between"><span class="text-slate-500">Định danh:</span><span class="font-bold font-mono text-slate-900">${v.type==='new'?v.vin:v.plate}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Phân loại:</span><span>${v.type==='new'?'Xe mới':'Xe cũ'} - ${v.model}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Ngày nhập:</span><span>${formatDateVN(v.inDate)}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Người vào:</span><span>${v.inPerson||'-'} (${v.dept||'-'})</span></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="closeModal(); promptMoveSlot(${v.id})" class="py-2.5 bg-sky-50 text-sky-700 hover:bg-sky-100 text-xs font-semibold rounded-xl border border-sky-200">
+                                <i class="fa-solid fa-arrows-up-down-left-right"></i> Chuyển vị trí
+                            </button>
+                            <button onclick="closeModal(); kickFromSlot(${v.id})" class="py-2.5 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold rounded-xl border border-amber-200">
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i> Kích khỏi ô
+                            </button>
+                            <button onclick="closeModal(); openQuickCheckout(${v.id})" class="py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold rounded-xl col-span-2 shadow-sm">
+                                <i class="fa-solid fa-right-from-bracket"></i> Làm thủ tục xuất xe
+                            </button>
+                            <button onclick="closeModal(); editRecord(${v.id})" class="py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold rounded-xl col-span-2">
+                                Chỉnh sửa thông tin xe
+                            </button>
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        function assignSlot(vehicleId, slotName) {
+            const v = state.vehicles.find(item => item.id === vehicleId);
+            if(v) {
+                v.slot = slotName;
+                saveLocalState();
+                closeModal();
+                renderGrid();
+                renderRecordsTable();
+                showToast(`Đã gán xe vào ô ${slotName}`, 'success');
+            }
+        }
+
+        function kickFromSlot(vehicleId) {
+            const v = state.vehicles.find(item => item.id === vehicleId);
+            if(v) {
+                v.slot = '';
+                saveLocalState();
+                renderGrid();
+                renderRecordsTable();
+                showToast(`Đã kích xe khỏi ô đỗ`, 'info');
+            }
+        }
+
+        function promptMoveSlot(vehicleId) {
+            const v = state.vehicles.find(item => item.id === vehicleId);
+            showModal('Chuyển vị trí đỗ mới', `
+                <div class="space-y-3">
+                    <p class="text-xs text-slate-600">Đang chọn xe: <strong class="font-mono">${v.type==='new'?v.vin:v.plate}</strong> (Vị trí cũ: ${v.slot})</p>
+                    <input type="text" id="newSlotInput" placeholder="Ví dụ: 1T-5, 2PLD-12..." class="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-mono uppercase focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    <button onclick="execMoveSlot(${v.id})" class="w-full py-2.5 bg-sky-600 text-white text-xs font-semibold rounded-xl">Xác nhận chuyển</button>
+                </div>
+            `);
+        }
+
+        function execMoveSlot(vehicleId) {
+            const newSlot = document.getElementById('newSlotInput').value.trim().toUpperCase();
+            if(!newSlot) return;
+
+            const occupied = state.vehicles.find(v => v.slot === newSlot && v.status === 'in');
+            if(occupied) {
+                showToast(`Vị trí ${newSlot} đã có xe đỗ!`, 'error');
+                return;
+            }
+
+            const v = state.vehicles.find(item => item.id === vehicleId);
+            if(v) {
+                v.slot = newSlot;
+                saveLocalState();
+                closeModal();
+                renderGrid();
+                renderRecordsTable();
+                showToast(`Đã chuyển xe sang vị trí ${newSlot}`, 'success');
+            }
+        }
+
+        // Forms Handlers
+        function openFormModal(mode, presetSlot = '') {
+            toggleFabMenu();
+            let title = '';
+            let formHtml = '';
+            const now = getNowFormatted();
+
+            const deptOptions = PRESETS.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            const modelOptions = PRESETS.models.map(m => `<option value="${m}">${m}</option>`).join('');
+            const inStatusOldOpts = PRESETS.inStatusOld.map(s => `<option value="${s}">${s}</option>`).join('');
+            const outStatusOldOpts = PRESETS.outStatusOld.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            if (mode === 'in-old') {
+                title = '🟢 Nhập Xe Cũ Về Bãi';
+                formHtml = `
+                    <form onsubmit="handleFormSubmit(event, 'in-old')" class="space-y-3 text-xs">
+                        <div><label class="font-semibold block mb-1">Biển số xe</label><input type="text" id="f_plate" placeholder="VD: 51H-123.45" class="w-full p-2.5 border border-slate-200 rounded-xl uppercase font-mono"></div>
+                        <div><label class="font-semibold block mb-1">Dòng xe</label><select id="f_model" class="w-full p-2.5 border border-slate-200 rounded-xl">${modelOptions}</select></div>
+                        <div><label class="font-semibold block mb-1">Ngày nhập</label><input type="datetime-local" id="f_inDate" value="${now}" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Tên người vào</label><input type="text" id="f_inPerson" placeholder="Tên người bàn giao/lái xe" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Bộ phận</label><select id="f_dept" class="w-full p-2.5 border border-slate-200 rounded-xl">${deptOptions}</select></div>
+                        <div><label class="font-semibold block mb-1">Tình trạng vào</label><select id="f_inStatus" class="w-full p-2.5 border border-slate-200 rounded-xl">${inStatusOldOpts}</select></div>
+                        <div><label class="font-semibold block mb-1">Vị trí ô đỗ (Không bắt buộc)</label><input type="text" id="f_slot" value="${presetSlot}" placeholder="VD: 1T-1" class="w-full p-2.5 border border-slate-200 rounded-xl font-mono uppercase"></div>
+                        <div><label class="font-semibold block mb-1">Ghi chú</label><textarea id="f_notes" rows="2" class="w-full p-2.5 border border-slate-200 rounded-xl"></textarea></div>
+                        <button type="submit" class="w-full py-3 bg-amber-600 text-white font-bold rounded-xl text-xs shadow-md">XÁC NHẬN NHẬP XE CŨ</button>
+                    </form>
+                `;
+            } else if (mode === 'out-old') {
+                title = '🔴 Xuất Xe Cũ Khỏi Bãi';
+                const oldInVehicles = state.vehicles.filter(v => v.type === 'old' && v.status === 'in');
+                const plateOpts = oldInVehicles.map(v => `<option value="${v.id}">${v.plate} (${v.model}) - Ô: ${v.slot||'Chưa gán'}</option>`).join('');
+
+                formHtml = `
+                    <form onsubmit="handleFormSubmit(event, 'out-old')" class="space-y-3 text-xs">
+                        <div><label class="font-semibold block mb-1">Chọn xe tồn cần xuất</label><select id="f_vehicleId" class="w-full p-2.5 border border-slate-200 rounded-xl font-mono">${plateOpts || '<option value="">Không có xe cũ tồn bãi</option>'}</select></div>
+                        <div><label class="font-semibold block mb-1">Ngày xuất</label><input type="datetime-local" id="f_outDate" value="${now}" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Tên người ra</label><input type="text" id="f_outPerson" placeholder="Người nhận xe" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Bộ phận</label><select id="f_dept" class="w-full p-2.5 border border-slate-200 rounded-xl">${deptOptions}</select></div>
+                        <div><label class="font-semibold block mb-1">Tình trạng ra</label><select id="f_outStatus" class="w-full p-2.5 border border-slate-200 rounded-xl">${outStatusOldOpts}</select></div>
+                        <div><label class="font-semibold block mb-1">Ghi chú</label><textarea id="f_notes" rows="2" class="w-full p-2.5 border border-slate-200 rounded-xl"></textarea></div>
+                        <button type="submit" class="w-full py-3 bg-red-600 text-white font-bold rounded-xl text-xs shadow-md" ${!oldInVehicles.length?'disabled':''}>XÁC NHẬN XUẤT XE CŨ</button>
+                    </form>
+                `;
+            } else if (mode === 'in-new') {
+                title = '🔵 Nhập Xe Mới Về Bãi';
+                formHtml = `
+                    <form onsubmit="handleFormSubmit(event, 'in-new')" class="space-y-3 text-xs">
+                        <div><label class="font-semibold block mb-1">6 Số VIN cuối</label><input type="text" id="f_vin" maxlength="6" placeholder="VD: 123456" class="w-full p-2.5 border border-slate-200 rounded-xl font-mono uppercase"></div>
+                        <div><label class="font-semibold block mb-1">Dòng xe</label><select id="f_model" class="w-full p-2.5 border border-slate-200 rounded-xl">${modelOptions}</select></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="font-semibold block mb-1">Màu xe</label><input type="text" id="f_color" placeholder="Trắng, Đen..." class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                            <div><label class="font-semibold block mb-1">Số chìa khóa</label><input type="number" id="f_keyCount" value="2" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        </div>
+                        <div><label class="font-semibold block mb-1">Ngày nhập</label><input type="datetime-local" id="f_inDate" value="${now}" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Vị trí ô đỗ (Không bắt buộc)</label><input type="text" id="f_slot" value="${presetSlot}" placeholder="VD: 1T-1" class="w-full p-2.5 border border-slate-200 rounded-xl font-mono uppercase"></div>
+                        <div><label class="font-semibold block mb-1">Ghi chú</label><textarea id="f_notes" rows="2" class="w-full p-2.5 border border-slate-200 rounded-xl"></textarea></div>
+                        <button type="submit" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl text-xs shadow-md">XÁC NHẬN NHẬP XE MỚI</button>
+                    </form>
+                `;
+            } else if (mode === 'out-new') {
+                title = '🟠 Xuất Xe Mới Khỏi Bãi';
+                const newInVehicles = state.vehicles.filter(v => v.type === 'new' && v.status === 'in');
+                const vinOpts = newInVehicles.map(v => `<option value="${v.id}">${v.vin} (${v.model} - ${v.color||'Chưa rõ'}) - Ô: ${v.slot||'Chưa gán'}</option>`).join('');
+
+                formHtml = `
+                    <form onsubmit="handleFormSubmit(event, 'out-new')" class="space-y-3 text-xs">
+                        <div><label class="font-semibold block mb-1">Chọn xe Mới tồn cần xuất</label><select id="f_vehicleId" class="w-full p-2.5 border border-slate-200 rounded-xl font-mono">${vinOpts || '<option value="">Không có xe mới tồn bãi</option>'}</select></div>
+                        <div><label class="font-semibold block mb-1">Ngày xuất</label><input type="datetime-local" id="f_outDate" value="${now}" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Tên người ra</label><input type="text" id="f_outPerson" placeholder="Người nhận giao xe" class="w-full p-2.5 border border-slate-200 rounded-xl"></div>
+                        <div><label class="font-semibold block mb-1">Bộ phận</label><select id="f_dept" class="w-full p-2.5 border border-slate-200 rounded-xl">${deptOptions}</select></div>
+                        <div><label class="font-semibold block mb-1">Ghi chú</label><textarea id="f_notes" rows="2" class="w-full p-2.5 border border-slate-200 rounded-xl"></textarea></div>
+                        <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow-md" ${!newInVehicles.length?'disabled':''}>XÁC NHẬN XUẤT XE MỚI</button>
+                    </form>
+                `;
+            }
+
+            showModal(title, formHtml);
+        }
+
+        function handleFormSubmit(e, mode) {
+            e.preventDefault();
+            if (mode === 'in-old') {
+                const vehicle = {
+                    id: Date.now(),
+                    type: 'old',
+                    plate: document.getElementById('f_plate').value.trim().toUpperCase(),
+                    model: document.getElementById('f_model').value,
+                    inDate: document.getElementById('f_inDate').value,
+                    inPerson: document.getElementById('f_inPerson').value.trim(),
+                    dept: document.getElementById('f_dept').value,
+                    inStatus: document.getElementById('f_inStatus').value,
+                    slot: document.getElementById('f_slot').value.trim().toUpperCase(),
+                    notes: document.getElementById('f_notes').value.trim(),
+                    status: 'in'
+                };
+                state.vehicles.unshift(vehicle);
+                showToast('Đã nhập xe cũ vào hệ thống!', 'success');
+            } else if (mode === 'out-old') {
+                const vId = Number(document.getElementById('f_vehicleId').value);
+                const v = state.vehicles.find(item => item.id === vId);
+                if(v) {
+                    v.status = 'out';
+                    v.outDate = document.getElementById('f_outDate').value;
+                    v.outPerson = document.getElementById('f_outPerson').value.trim();
+                    v.outStatus = document.getElementById('f_outStatus').value;
+                    if(document.getElementById('f_notes').value.trim()) {
+                        v.notes += ` | Xuất: ${document.getElementById('f_notes').value.trim()}`;
+                    }
+                    v.slot = '';
+                    showToast('Đã xuất xe cũ khỏi bãi!', 'success');
+                }
+            } else if (mode === 'in-new') {
+                const vehicle = {
+                    id: Date.now(),
+                    type: 'new',
+                    vin: document.getElementById('f_vin').value.trim().toUpperCase(),
+                    model: document.getElementById('f_model').value,
+                    color: document.getElementById('f_color').value.trim(),
+                    keyCount: document.getElementById('f_keyCount').value,
+                    inDate: document.getElementById('f_inDate').value,
+                    slot: document.getElementById('f_slot').value.trim().toUpperCase(),
+                    notes: document.getElementById('f_notes').value.trim(),
+                    status: 'in'
+                };
+                state.vehicles.unshift(vehicle);
+                showToast('Đã nhập xe mới vào hệ thống!', 'success');
+            } else if (mode === 'out-new') {
+                const vId = Number(document.getElementById('f_vehicleId').value);
+                const v = state.vehicles.find(item => item.id === vId);
+                if(v) {
+                    v.status = 'out';
+                    v.outDate = document.getElementById('f_outDate').value;
+                    v.outPerson = document.getElementById('f_outPerson').value.trim();
+                    v.dept = document.getElementById('f_dept').value;
+                    if(document.getElementById('f_notes').value.trim()) {
+                        v.notes += ` | Xuất: ${document.getElementById('f_notes').value.trim()}`;
+                    }
+                    v.slot = '';
+                    showToast('Đã xuất xe mới khỏi bãi!', 'success');
+                }
+            }
+
+            saveLocalState();
+            closeModal();
+            renderAll();
+        }
+
+        function openQuickCheckout(vehicleId) {
+            const v = state.vehicles.find(item => item.id === vehicleId);
+            if(!v) return;
+
+            if(v.type === 'old') {
+                openFormModal('out-old');
+                setTimeout(() => {
+                    const sel = document.getElementById('f_vehicleId');
+                    if(sel) sel.value = vehicleId;
+                }, 100);
+            } else {
+                openFormModal('out-new');
+                setTimeout(() => {
+                    const sel = document.getElementById('f_vehicleId');
+                    if(sel) sel.value = vehicleId;
+                }, 100);
+            }
+        }
+
+        function editRecord(id) {
+            const v = state.vehicles.find(item => item.id === id);
+            if(!v) return;
+
+            const isNew = v.type === 'new';
+            showModal(`Sửa Hồ Sơ Xe: ${isNew ? v.vin : v.plate}`, `
+                <div class="space-y-3 text-xs">
+                    ${isNew ? `
+                        <div><label class="font-semibold block mb-1">6 Số VIN</label><input type="text" id="edit_vin" value="${v.vin||''}" class="w-full p-2.5 border rounded-xl font-mono"></div>
+                        <div><label class="font-semibold block mb-1">Màu xe</label><input type="text" id="edit_color" value="${v.color||''}" class="w-full p-2.5 border rounded-xl"></div>
+                    ` : `
+                        <div><label class="font-semibold block mb-1">Biển số xe</label><input type="text" id="edit_plate" value="${v.plate||''}" class="w-full p-2.5 border rounded-xl font-mono"></div>
+                    `}
+                    <div><label class="font-semibold block mb-1">Vị trí ô đỗ</label><input type="text" id="edit_slot" value="${v.slot||''}" class="w-full p-2.5 border rounded-xl font-mono uppercase"></div>
+                    <div><label class="font-semibold block mb-1">Ngày nhập</label><input type="datetime-local" id="edit_inDate" value="${v.inDate||''}" class="w-full p-2.5 border rounded-xl"></div>
+                    <div><label class="font-semibold block mb-1">Tên người vào</label><input type="text" id="edit_inPerson" value="${v.inPerson||''}" class="w-full p-2.5 border rounded-xl"></div>
+                    <div><label class="font-semibold block mb-1">Tên người ra</label><input type="text" id="edit_outPerson" value="${v.outPerson||''}" class="w-full p-2.5 border rounded-xl"></div>
+                    <div><label class="font-semibold block mb-1">Ghi chú</label><textarea id="edit_notes" rows="2" class="w-full p-2.5 border rounded-xl">${v.notes||''}</textarea></div>
+                    <button onclick="saveEditRecord(${v.id})" class="w-full py-2.5 bg-sky-600 text-white font-bold rounded-xl">LƯU THAY ĐỔI</button>
+                </div>
+            `);
+        }
+
+        function saveEditRecord(id) {
+            const v = state.vehicles.find(item => item.id === id);
+            if(v) {
+                if(v.type === 'new') {
+                    v.vin = document.getElementById('edit_vin').value.trim().toUpperCase();
+                    v.color = document.getElementById('edit_color').value.trim();
+                } else {
+                    v.plate = document.getElementById('edit_plate').value.trim().toUpperCase();
+                }
+                v.slot = document.getElementById('edit_slot').value.trim().toUpperCase();
+                v.inDate = document.getElementById('edit_inDate').value;
+                v.inPerson = document.getElementById('edit_inPerson').value.trim();
+                v.outPerson = document.getElementById('edit_outPerson').value.trim();
+                v.notes = document.getElementById('edit_notes').value.trim();
+
+                saveLocalState();
+                closeModal();
+                renderAll();
+                showToast('Đã cập nhật thông tin!', 'success');
+            }
+        }
+
+        function confirmDeleteRecord(id) {
+            showModal('Xác nhận xóa hồ sơ', `
+                <div class="space-y-4 text-xs text-center">
+                    <p class="text-slate-600">Bạn có chắc chắn muốn xóa vĩnh viễn hồ sơ xe này?</p>
+                    <div class="flex gap-2">
+                        <button onclick="closeModal()" class="flex-1 py-2.5 bg-slate-100 font-semibold rounded-xl">Hủy</button>
+                        <button onclick="execDeleteRecord(${id})" class="flex-1 py-2.5 bg-red-600 text-white font-semibold rounded-xl">Xóa vĩnh viễn</button>
+                    </div>
+                </div>
+            `);
+        }
+
+        function execDeleteRecord(id) {
+            state.vehicles = state.vehicles.filter(v => v.id !== id);
+            saveLocalState();
+            closeModal();
+            renderAll();
+            showToast('Đã xóa hồ sơ xe!', 'info');
+        }
+
+        // Firebase & Excel Logic
+        function syncToFirebase() {
+            if(!window.fbDb) {
+                showToast('Firebase Console chưa sẵn sàng!', 'error');
+                return;
+            }
+            showToast('Đang đồng bộ lên Firebase...', 'info');
+            window.fbSet(window.fbRef(window.fbDb, 'parking34_data'), state)
+                .then(() => showToast('Đồng bộ Cloud Firebase thành công!', 'success'))
+                .catch(err => showToast('Lỗi đồng bộ Firebase: ' + err.message, 'error'));
+        }
+
+        function fetchFromFirebase() {
+            if(!window.fbDb) {
+                showToast('Firebase Console chưa sẵn sàng!', 'error');
+                return;
+            }
+            showToast('Đang tải dữ liệu từ Firebase...', 'info');
+            window.fbGet(window.fbRef(window.fbDb, 'parking34_data')).then(snapshot => {
+                if (snapshot.exists()) {
+                    state = snapshot.val();
+                    saveLocalState();
+                    renderAll();
+                    showToast('Đã khôi phục dữ liệu từ Cloud!', 'success');
+                } else {
+                    showToast('Chưa có dữ liệu trên Cloud!', 'warning');
+                }
+            }).catch(err => showToast('Lỗi tải từ Firebase: ' + err.message, 'error'));
+        }
+
+        function importExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast('Đang đọc file Excel...', 'info');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    if (!jsonRows || jsonRows.length === 0) {
+                        showToast('File Excel trống!', 'error');
+                        return;
+                    }
+
+                    let count = 0;
+                    jsonRows.forEach((row, index) => {
+                        const typeRaw = (row["Phân Loại"] || row["Loại Xe"] || "").toString().toLowerCase();
+                        const isNew = typeRaw.includes('mới') || typeRaw === 'new' || Boolean(row["6 Số VIN"] || row["VIN"]);
+
+                        const vinVal = (row["6 Số VIN"] || row["VIN"] || "").toString().trim().toUpperCase();
+                        const plateVal = (row["Biển Số"] || row["Biển số"] || "").toString().trim().toUpperCase();
+
+                        const vehicle = {
+                            id: Date.now() + index,
+                            type: isNew ? 'new' : 'old',
+                            vin: isNew ? vinVal : '',
+                            plate: !isNew ? plateVal : '',
+                            model: (row["Dòng Xe"] || row["Model"] || "VF 5").toString().trim(),
+                            color: (row["Màu Xe"] || "").toString().trim(),
+                            keyCount: (row["Số Chìa Khóa"] || "2").toString(),
+                            slot: (row["Vị Trí Đỗ"] || row["Vị trí"] || "").toString().trim().toUpperCase(),
+                            inDate: row["Ngày Nhập"] || row["Ngày nhập"] || "",
+                            inPerson: (row["Tên Người Vào"] || "").toString().trim(),
+                            dept: (row["Bộ Phận"] || "Điều phối").toString().trim(),
+                            inStatus: (row["Tình Trạng Vào"] || "").toString().trim(),
+                            outDate: row["Ngày Xuất"] || "",
+                            outPerson: (row["Tên Người Ra"] || "").toString().trim(),
+                            outStatus: (row["Tình Trạng Ra"] || "").toString().trim(),
+                            status: (row["Trạng Thái Tồn"] || "").toString().toLowerCase().includes('xuất') ? 'out' : 'in',
+                            notes: (row["Ghi Chú"] || "").toString().trim()
+                        };
+
+                        const exists = state.vehicles.some(v => 
+                            (isNew && v.vin && v.vin === vehicle.vin) || 
+                            (!isNew && v.plate && v.plate === vehicle.plate)
+                        );
+
+                        if (!exists && (vehicle.vin || vehicle.plate)) {
+                            state.vehicles.push(vehicle);
+                            count++;
+                        }
+                    });
+
+                    saveLocalState();
+                    renderAll();
+                    showToast(`Đã nạp ${count} xe từ file Excel!`, 'success');
+
+                    if (window.fbDb && count > 0) {
+                        setTimeout(() => {
+                            if (confirm(`Đã nạp thành công ${count} xe. Bạn có muốn đồng bộ ngay dữ liệu này lên Cloud Firebase không?`)) {
+                                syncToFirebase();
+                            }
+                        }, 500);
+                    }
+                    event.target.value = '';
+
+                } catch (err) {
+                    console.error(err);
+                    showToast('Lỗi đọc file Excel: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `Data_BaiXe34_${new Date().toISOString().slice(0,10)}.json`);
+            dlAnchor.click();
+            showToast('Đã xuất file JSON!', 'success');
+        }
+
+        function importJSON(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if(parsed.vehicles && parsed.rows) {
+                        state = parsed;
+                        saveLocalState();
+                        renderAll();
+                        showToast('Đã nhập file JSON thành công!', 'success');
+                    } else {
+                        showToast('File JSON không hợp lệ!', 'error');
+                    }
+                } catch(err) {
+                    showToast('Lỗi đọc file JSON', 'error');
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        function resetFactoryData() {
+            if(confirm('Bạn có chắc chắn muốn xóa dữ liệu về mặc định ban đầu?')) {
+                state = { vehicles: [], rows: [1,2,3,4,5], specialNotes: ["", "", ""], selectedRow: 1, overviewFilter: 'day' };
+                saveLocalState();
+                renderAll();
+                showToast('Đã xóa sạch dữ liệu.', 'info');
+            }
+        }
+
+        function showModal(title, contentHtml) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalBody').innerHTML = contentHtml;
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let bgClass = 'bg-slate-900 text-white';
+            let icon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+
+            if(type === 'error') { bgClass = 'bg-red-600 text-white'; icon = '<i class="fa-solid fa-circle-xmark"></i>'; }
+            if(type === 'warning') { bgClass = 'bg-amber-600 text-white'; icon = '<i class="fa-solid fa-triangle-exclamation"></i>'; }
+            if(type === 'info') { bgClass = 'bg-sky-600 text-white'; icon = '<i class="fa-solid fa-circle-info"></i>'; }
+
+            toast.className = `p-3 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2.5 transition-all duration-300 transform translate-y-[-10px] opacity-0 ${bgClass} pointer-events-auto`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-y-[-10px]', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
