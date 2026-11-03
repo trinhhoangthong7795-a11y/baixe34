@@ -384,7 +384,6 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-	https://myparking34-default-rtdb.firebaseio.com/
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -1336,30 +1335,41 @@
 
                     let count = 0;
                     jsonRows.forEach((row, index) => {
-                        const typeRaw = (row["Phân Loại"] || row["Loại Xe"] || "").toString().toLowerCase();
-                        const isNew = typeRaw.includes('mới') || typeRaw === 'new' || Boolean(row["6 Số VIN"] || row["VIN"]);
+                        // Helper to find key ignoring case and accents
+                        const getVal = (...keys) => {
+                            for (let k of keys) {
+                                for (let rk in row) {
+                                    if (rk.trim().toLowerCase() === k.trim().toLowerCase()) {
+                                        return row[rk];
+                                    }
+                                }
+                            }
+                            return "";
+                        };
 
-                        const vinVal = (row["6 Số VIN"] || row["VIN"] || "").toString().trim().toUpperCase();
-                        const plateVal = (row["Biển Số"] || row["Biển số"] || "").toString().trim().toUpperCase();
+                        const typeRaw = (getVal("Phân loại", "Phân Loại", "Loại Xe") || "").toString().toLowerCase();
+                        const vinVal = (getVal("6 số VIN", "6 Số VIN", "VIN") || "").toString().trim().toUpperCase();
+                        const plateVal = (getVal("Biển số", "Biển Số") || "").toString().trim().toUpperCase();
+                        const isNew = typeRaw.includes('mới') || typeRaw === 'new' || (vinVal !== "" && plateVal === "");
 
                         const vehicle = {
                             id: Date.now() + index,
                             type: isNew ? 'new' : 'old',
                             vin: isNew ? vinVal : '',
                             plate: !isNew ? plateVal : '',
-                            model: (row["Dòng Xe"] || row["Model"] || "VF 5").toString().trim(),
-                            color: (row["Màu Xe"] || "").toString().trim(),
-                            keyCount: (row["Số Chìa Khóa"] || "2").toString(),
-                            slot: (row["Vị Trí Đỗ"] || row["Vị trí"] || "").toString().trim().toUpperCase(),
-                            inDate: row["Ngày Nhập"] || row["Ngày nhập"] || "",
-                            inPerson: (row["Tên Người Vào"] || "").toString().trim(),
-                            dept: (row["Bộ Phận"] || "Điều phối").toString().trim(),
-                            inStatus: (row["Tình Trạng Vào"] || "").toString().trim(),
-                            outDate: row["Ngày Xuất"] || "",
-                            outPerson: (row["Tên Người Ra"] || "").toString().trim(),
-                            outStatus: (row["Tình Trạng Ra"] || "").toString().trim(),
-                            status: (row["Trạng Thái Tồn"] || "").toString().toLowerCase().includes('xuất') ? 'out' : 'in',
-                            notes: (row["Ghi Chú"] || "").toString().trim()
+                            model: (getVal("Dòng xe", "Dòng Xe", "Model") || "VF 5").toString().trim(),
+                            color: (getVal("Màu xe", "Màu Xe") || "").toString().trim(),
+                            keyCount: (getVal("Số chìa khoá", "Số chìa khóa", "Số Chìa Khóa") || "2").toString(),
+                            slot: (getVal("Vị trí đỗ", "Vị Trí Đỗ", "Vị trí") || "").toString().trim().toUpperCase(),
+                            inDate: getVal("Ngày nhập", "Ngày Nhập") || "",
+                            inPerson: (getVal("Tên người vào", "Tên Người Vào") || "").toString().trim(),
+                            dept: (getVal("Bộ phận", "Bộ Phận") || "Điều phối").toString().trim(),
+                            inStatus: (getVal("Tình trạng vào", "Tình Trạng Vào") || "").toString().trim(),
+                            outDate: getVal("Ngày xuất", "Ngày Xuất") || "",
+                            outPerson: (getVal("Tên người ra", "Tên Người Ra") || "").toString().trim(),
+                            outStatus: (getVal("Tình trạng ra", "Tình Trạng Ra") || "").toString().trim(),
+                            status: (getVal("Trạng thái tồn", "Trạng Thái Tồn") || "").toString().toLowerCase().includes('xuất') ? 'out' : 'in',
+                            notes: (getVal("Ghi chú", "Ghi Chú") || "").toString().trim()
                         };
 
                         const exists = state.vehicles.some(v => 
