@@ -14,44 +14,63 @@
   </style>
 </head>
 <body>
-  <main><div class="spinner" aria-hidden="true"></div><strong>Đang khôi phục ứng dụng bãi xe…</strong><p id="msg">Vui lòng đợi trong giây lát.</p></main>
+  <main><div class="spinner" aria-hidden="true"></div><strong>Đang tải ứng dụng bãi xe…</strong><p id="msg">Vui lòng đợi trong giây lát.</p></main>
   <script>
   (async function(){
     const source='https://raw.githubusercontent.com/trinhhoangthong7795-a11y/baixe34/8cdfb38caf026dad54c91c97ec501d451dfc6688/index.html';
+    const replace=(text,oldText,newText,label)=>{
+      if(!text.includes(oldText)){console.warn('Bỏ qua thay đổi không khớp:',label);return text}
+      return text.replace(oldText,newText);
+    };
     try{
       const response=await fetch(source,{cache:'no-store'});
-      if(!response.ok)throw new Error('HTTP '+response.status);
+      if(!response.ok)throw new Error('Không tải được bản gốc ('+response.status+').');
       let html=await response.text();
       const mobileStyle=`<style>
         @media(max-width:900px){
-          body{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
+          body{padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))}
           .shell{display:block;min-height:100vh}
-          .side{position:fixed!important;inset:auto 0 0!important;z-index:50!important;height:auto!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px!important;overflow:visible!important;padding:7px 8px max(9px,env(safe-area-inset-bottom,0px))!important;background:rgba(255,255,255,.96)!important;backdrop-filter:blur(16px);box-shadow:0 -8px 26px rgba(17,35,60,.09);border:0!important;border-top:1px solid var(--line)!important}
-          .side .sh{display:none!important}
-          .side .nav{display:none!important}
+          .side{position:fixed!important;inset:auto 0 0!important;z-index:50!important;height:auto!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px!important;overflow:visible!important;padding:7px 8px max(9px,env(safe-area-inset-bottom,0px))!important;background:rgba(255,255,255,.97)!important;backdrop-filter:blur(16px);box-shadow:0 -8px 26px rgba(17,35,60,.09);border:0!important;border-top:1px solid var(--line)!important}
+          .side .sh{display:none!important}.side .nav{display:none!important}
           .side .nav[data-go="dashboard"],.side .nav[data-go="somap"],.side .nav[data-go="ton"],.side .nav[data-go="nhatky"]{display:flex!important;flex-direction:column;justify-content:center;gap:4px!important;width:100%!important;min-height:52px;padding:6px 3px!important;font-size:10px!important;white-space:normal!important;text-align:center;border-radius:13px}
-          .side .nav svg{width:19px;height:19px}
-          .main{padding-top:14px!important;padding-bottom:24px!important;padding-left:14px!important;padding-right:14px!important}
-          .topbar{padding:10px 14px!important;gap:9px!important}
-          .brand{width:auto!important;flex:0 1 auto!important}
-          .brand b{max-width:145px;font-size:13px!important}
-          .brand small,.gs kbd{display:none!important}
-          .gs{flex:1 1 120px!important;max-width:none!important}
-          .gs input{font-size:13px}
-          .sync span{display:none!important}
+          .side .nav svg{width:19px;height:19px}.main{padding:14px 14px 24px!important}
+          .topbar{padding:10px 14px!important;gap:9px!important}.brand{width:auto!important;flex:0 1 auto!important}.brand b{max-width:145px;font-size:13px!important}
+          .brand small,.gs kbd{display:none!important}.gs{flex:1 1 120px!important;max-width:none!important}.gs input{font-size:13px}.sync span{display:none!important}
           .fab-app{position:fixed;right:18px;bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:55;width:56px;height:56px;border:0;border-radius:18px;background:linear-gradient(135deg,#0a60d8,#287df5);color:white;box-shadow:0 12px 26px rgba(10,96,216,.34);font-size:30px;font-weight:400;line-height:1}
-          .card{padding:14px!important;border-radius:18px!important}
-          .kpi{border-radius:16px!important}
+          .card{padding:14px!important;border-radius:18px!important}.kpi{border-radius:16px!important}
+          .yard-scroll .yards{display:flex;flex-direction:column;width:100%;min-width:0}.yard-scroll .yard{width:100%;min-width:0}
+          .yard-columns{grid-template-columns:repeat(2,minmax(0,1fr))!important}.yard-scroll{max-height:70vh}
+          .yard-head h4{cursor:pointer;min-height:42px;display:flex;align-items:center}
           .report-page{margin:-14px -14px 0!important;padding:0 14px 24px!important}
         }
         @media(min-width:901px){.fab-app{display:none}}
       </style>`;
+
+      // Restore the original app source, then add non-destructive mobile UX and requested workflows.
+      html=replace(html,"depotS:['GSM'", "depotS:['GSM'",'sanity'); // no-op guard for source version
+      html=replace(html,"depots:['GSM','RTO','Khác'],depts:['Điều phối','Cố vấn','Kỹ thuật','GĐ','Khác','RTO'],\n  inStates:","depots:['GSM','RTO','Khác'],depts:['Điều phối','Cố vấn','Kỹ thuật','GĐ','Khác','RTO'],staff:[],\n  inStates:",'thêm danh mục nhân sự');
+      html=replace(html,"const lastPerson=()=>{try{return JSON.parse(localStorage.getItem('bx2_last')||'{}')}catch(e){return {}}};","const lastPerson=()=>{try{return JSON.parse(localStorage.getItem('bx2_last')||'{}')}catch(e){return {}}};\nconst staffPairs=()=>{const out=[];const add=(name,dept)=>{name=norm(name);dept=norm(dept);if(name&&dept&&!out.some(x=>x.name===name&&x.dept===dept))out.push({name,dept})};(C().staff||[]).forEach(s=>{const i=String(s).lastIndexOf(' / ');if(i>0)add(s.slice(0,i),s.slice(i+3))});ALL().forEach(v=>{add(v.inBy,v.inDept);add(v.outBy,v.outDept)});const lp=lastPerson();add(lp.by,lp.dept);return out.sort((a,b)=>a.name.localeCompare(b.name,'vi'))};\nconst staffSelect=(id,name,dept)=>{const cur=JSON.stringify([name||'',dept||'']);return '<select id=\"'+id+'\"><option value=\"\">— Chọn tên / bộ phận —</option>'+staffPairs().map(x=>{const val=JSON.stringify([x.name,x.dept]);return '<option value=\"'+esc(val)+'\"'+(val===cur?' selected':'')+'>'+esc(x.name+' / '+x.dept)+'</option>'}).join('')+'</select>'};\nconst readStaff=id=>{try{const x=JSON.parse($('#'+id).value);return {name:x[0]||'',dept:x[1]||''}}catch(e){return {name:'',dept:''}}};",'thêm bộ chọn tên/bộ phận');
+      html=replace(html,"'<label class=\"f\">Người chạy xe vào <em>*</em><input id=\"v_by\" list=\"dl_people\" value=\"'+esc(lp.by||'')+'\" autocomplete=\"off\" placeholder=\"Họ tên người lái\"></label>'+\n    '<label class=\"f\">Bộ phận <em>*</em><select id=\"v_dept\">'+opts(C().depts,lp.dept||'','— Chọn bộ phận —')+'</select></label>'+","'<label class=\"f\">Tên / bộ phận <em>*</em>'+staffSelect('v_staff',lp.by,lp.dept)+'</label>'+",'gộp nhân sự phiếu vào');
+      html=replace(html,"if(!g('v_model'))return err('Chọn dòng xe.');if(!g('v_by'))return err('Nhập tên người chạy xe vào.');if(!g('v_dept'))return err('Chọn bộ phận.');","if(!g('v_model'))return err('Chọn dòng xe.');const staff=readStaff('v_staff');if(!staff.name||!staff.dept)return err('Chọn tên / bộ phận.');",'kiểm tra nhân sự phiếu vào');
+      html=replace(html,"inAt:at.toISOString(),inBy:g('v_by'),inDept:g('v_dept'),inState:n?'':g('v_state'),","inAt:at.toISOString(),inBy:staff.name,inDept:staff.dept,inState:n?'':g('v_state'),",'lưu nhân sự phiếu vào');
+      html=replace(html,"'<label class=\"f\">Người chạy xe ra <em>*</em><input id=\"r_by\" list=\"dl_people\" value=\"'+esc(lp.by||'')+'\" autocomplete=\"off\" placeholder=\"Họ tên người lái\"></label>'+\n  '<label class=\"f\">Bộ phận <em>*</em><select id=\"r_dept\">'+opts(C().depts,lp.dept||'','— Chọn bộ phận —')+'</select></label>'+","'<label class=\"f\">Tên / bộ phận <em>*</em>'+staffSelect('r_staff',lp.by,lp.dept)+'</label>'+",'gộp nhân sự phiếu ra');
+      html=replace(html,"if(!v||!v.open)return err('Xe này không còn trong bãi.');if(!g('r_state'))return err('Chọn tình trạng khi ra.');if(!g('r_by'))return err('Nhập tên người chạy xe ra.');if(!g('r_dept'))return err('Chọn bộ phận.');","if(!v||!v.open)return err('Xe này không còn trong bãi.');if(!g('r_state'))return err('Chọn tình trạng khi ra.');const staff=readStaff('r_staff');if(!staff.name||!staff.dept)return err('Chọn tên / bộ phận.');",'kiểm tra nhân sự phiếu ra');
+      html=replace(html,"Object.assign(v,{open:false,outAt:at.toISOString(),outBy:g('r_by'),outDept:g('r_dept'),outState:g('r_state'),outNote:g('r_note')});","Object.assign(v,{open:false,outAt:at.toISOString(),outBy:staff.name,outDept:staff.dept,outState:g('r_state'),outNote:g('r_note')});",'lưu nhân sự phiếu ra');
+      html=replace(html,"const LISTS=[['models','Dòng xe'],['depts','Bộ phận'],['depots','Depot / Đội'],['inStates'","const LISTS=[['models','Dòng xe'],['depts','Bộ phận'],['depots','Depot / Đội'],['staff','Tên / bộ phận (nhập dạng Tên / Bộ phận)'],['inStates'",'thêm danh mục nhân sự');
+      html=replace(html,"rep:{mode:'week',ref:dKey(new Date())},vao:{slot:'',pre:''},ra:{id:''},drawer:null};","rep:{mode:'week',ref:dKey(new Date())},somap:{yard:0},vao:{slot:'',pre:'',returnToMap:false},ra:{id:''},drawer:null};",'lưu dãy đang chọn');
+      html=replace(html,"function draw(){const pg=PAGES[ui.page];$('#view').innerHTML=pg.render();if(pg.after)pg.after()}","function draw(){const pg=PAGES[ui.page];$('#view').innerHTML=pg.render();if(pg.after)pg.after();if(ui.page==='somap')applyYardState()}",'duy trì trạng thái sơ đồ');
+      html=replace(html,"case 'slotNew':ui.vao.slot=el.dataset.slot;closeOv();go('vao');break;","case 'slotNew':ui.vao.slot=el.dataset.slot;ui.vao.returnToMap=true;ui.somap.yard=+(el.dataset.slot.match(/^\\d+/)||[])[0]||ui.somap.yard;closeOv();go('vao');break;",'giữ dãy khi nhập xe');
+      html=replace(html,"case 'slotIn':slotInModal(el.dataset.slot);break;","case 'slotIn':slotInModal(el.dataset.slot);break;\n    case 'yardOpen':ui.somap.yard=+el.dataset.yard;applyYardState();break;\n    case 'yardBack':ui.somap.yard=0;applyYardState();break;",'điều hướng dãy');
+      html=replace(html,"$('#v_at').value=toIn(new Date());lookupVao();\n}","$('#v_at').value=toIn(new Date());lookupVao();if(ui.vao.returnToMap){ui.vao.returnToMap=false;go('somap')}\n}",'quay lại đúng sơ đồ sau nhập');
+      html=replace(html,"window.addEventListener('hashchange',route);","function applyYardState(){const wrap=$('.yard-scroll');if(!wrap)return;const sections=$$('.yard',wrap);sections.forEach((section,i)=>{const n=i+1;section.dataset.yard=String(n);const title=$('h4',section);if(title){title.dataset.act='yardOpen';title.dataset.yard=String(n);title.setAttribute('role','button');title.setAttribute('tabindex','0')}const cols=$('.yard-columns',section);if(cols)cols.hidden=ui.somap.yard!==n;section.hidden=!!ui.somap.yard&&ui.somap.yard!==n});let back=$('#yardBack');if(!back){back=document.createElement('button');back.id='yardBack';back.className='btn';back.dataset.act='yardBack';back.textContent='← Tất cả dãy';wrap.parentNode.insertBefore(back,wrap)}back.hidden=!ui.somap.yard;const hint=$('.yard-hint');if(hint)hint.textContent=ui.somap.yard?'Đang xem Dãy '+ui.somap.yard+' · thao tác xong sẽ giữ nguyên dãy này.':'Chọn một dãy để xem các ô đậu.'}\nwindow.addEventListener('hashchange',route);",'thêm xử lý trạng thái dãy');
+      html=replace(html,"case 'yardBack':ui.somap.yard=0;applyYardState();break;","case 'yardBack':ui.somap.yard=0;applyYardState();break;",'giữ nút quay về');
+      html=html.replace('Cuộn ngang để xem các dãy, cuộn dọc để xem đủ 20 vị trí. Chạm ô trống để tìm xe chờ gán hoặc nhập xe mới; chạm ô có xe để thao tác.','Chọn một dãy để xem các ô đậu.');
       if(html.includes('</head>'))html=html.replace('</head>',mobileStyle+'</head>');
       if(html.includes('<div id="ovRoot">'))html=html.replace('<div id="ovRoot">','<button class="fab-app" type="button" data-go="vao" aria-label="Nhập xe vào bãi">+</button><div id="ovRoot">');
       document.open();document.write(html);document.close();
     }catch(error){
-      document.querySelector('#msg').innerHTML='Không tải được bản ứng dụng gốc. Hãy mở <a href="https://github.com/trinhhoangthong7795-a11y/baixe34/commit/8cdfb38caf026dad54c91c97ec501d451dfc6688">bản gốc trên GitHub</a> hoặc thử lại khi có mạng.';
-      console.error('Unable to restore original app:',error);
+      document.querySelector('#msg').innerHTML='Không tải được ứng dụng. Hãy mở <a href="https://github.com/trinhhoangthong7795-a11y/baixe34">repository trên GitHub</a> hoặc thử lại khi có mạng.';
+      console.error('Unable to load parking app:',error);
     }
   })();
   </script>
